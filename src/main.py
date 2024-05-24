@@ -1,11 +1,18 @@
 #region ------- IMPORTS -------------------------------------------------------------------------------------
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Depends
 import requests
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, Session
+from datetime import datetime, timezone
+from src.models import Base, RequestLog
 
 #endregion ---- IMPORTS -------------------------------------------------------------------------------------
 
 #region ------- CONSTANTS -----------------------------------------------------------------------------------
+
+# Default value to use when not running inside Docker
+DATABASE_URL = "postgresql://lucaf:1234@localhost:5432/http_db"
 
 # Declare basic constants for API functioning
 BASE_ENDPOINT = 'https://jsonplaceholder.typicode.com'
@@ -14,16 +21,52 @@ TODOS_ENDPOINT = '/todos'
 
 #endregion ---- CONSTANTS -----------------------------------------------------------------------------------
 
+
 #region ------- UTILS ---------------------------------------------------------------------------------------
 
-#endregion ---- UTILS --------------------------------------------------------------------------------------
+def get_session_local():
+    yield SessionLocal()
+
+#endregion ---- UTILS ---------------------------------------------------------------------------------------
 
 #region ------- INIT ----------------------------------------------------------------------------------------
 
 # Initialize FastAPI
 app = FastAPI()
 
+# Initialize DB and create it if not existing
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base.metadata.create_all(bind=engine)
+
 #endregion ---- INIT ----------------------------------------------------------------------------------------
+
+#region ------- MIDDLEWARE ----------------------------------------------------------------------------------
+
+@app.middleware("http")
+async def log_request(request: Request, call_next):
+    response = await call_next(request)
+    session = SessionLocal()
+
+    try:
+        log_entry = RequestLog(
+            type=request.method,
+            route=request.url.path,
+            ip_sender=request.client.host,
+            query=str(request.query_params),
+            body=(await request.body()).decode("utf-8"),
+            result_code=(response.status_code),
+            timestamp=datetime.now(timezone.utc)
+        )
+        session.add(log_entry)
+        session.commit()
+    finally:
+        session.close()
+
+    return response
+
+#endregion ---- MIDDLEWARE ----------------------------------------------------------------------------------
 
 #region ------- ROUTES --------------------------------------------------------------------------------------
 
@@ -121,5 +164,10 @@ async def get_todos(userId: int, limit: int = 5, offset: int = 0):
         raise HTTPException(status_code=500, detail="Internal Server Error - Could not communicate with jsonplaceholder API")
     
     return data[offset : offset + limit]
+
+@app.get("/db_logs")
+async def get_logs(offset: int = 0, limit: int = 10, db: Session = Depends(get_session_local)):
+    logs = db.query(RequestLog).offset(offset).limit(limit).all()
+    return logs
 
 #endregion ---- ROUTES -------------------------------------------------------------------------------------
