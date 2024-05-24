@@ -6,13 +6,18 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from datetime import datetime, timezone
 from src.models import Base, RequestLog
+import os
 
 #endregion ---- IMPORTS -------------------------------------------------------------------------------------
 
 #region ------- CONSTANTS -----------------------------------------------------------------------------------
 
 # Default value to use when not running inside Docker
-DATABASE_URL = "postgresql://lucaf:1234@localhost:5432/http_db"
+DEFAULT_DB_URL = "postgresql://lucaf:1234@localhost:5432/http_db"
+
+# Get the DATABASE_URL from environment, or use the default value
+DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DB_URL)
+
 
 # Declare basic constants for API functioning
 BASE_ENDPOINT = 'https://jsonplaceholder.typicode.com'
