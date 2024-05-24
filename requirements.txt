@@ -1,0 +1,6 @@
+requests
+setuptools
+fastapi
+uvicorn
+httpx
+pytest
