@@ -48,7 +48,7 @@ The application is developed in two different stages:
 - The second one introduces a SQL database as a docker container and allows to run the application through a docker container (Variant B)
 On the next paragraphs it will be explained how to run all the different variants.
 
-### (Variant A)
+### (Variant A) - [Based on Commit 22e9d6c]
 
 First of all you should clone the package in a local environment through `git clone`. The project structure will be displayed as:
 
