@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:latest
+    container_name: fastapi_db
+    environment:
+      POSTGRES_USER: lucaf
+      POSTGRES_PASSWORD: 1234
+      POSTGRES_DB: http_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - bridge-network
+
+  web:
+    build: .
+    container_name: fastapi_app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: "postgresql://lucaf:1234@db/http_db"
+    networks:
+      - bridge-network
+
+volumes:
+  db_data:
+
+networks:
+  bridge-network:
+    driver: bridge
